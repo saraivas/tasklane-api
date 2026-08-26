@@ -7,7 +7,12 @@ from app.main import app
 from app.db.base import Base
 from app.db.session import get_db
 
-TEST_DATABASE_URL = "postgresql://tasklane:tasklane@localhost:5433/tasklane_test"
+import os
+
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://tasklane:tasklane@localhost:5433/tasklane_test",
+)
 
 engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
