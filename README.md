@@ -11,7 +11,17 @@ pipeline.
 
 ## Status
 
-🚧 In progress — follow the journey on [dev.to](#).
+✅ Deployed and live — follow the journey on [dev.to](#). JWT auth, task CRUD
+with per-user isolation, Alembic migrations, Docker, and CI are all in place,
+and the API now has a live deployment on Render with a Neon Postgres
+database.
+
+## Live Demo
+
+Swagger docs: https://tasklane-api-xtxy.onrender.com/docs
+
+The free-tier instance spins down after inactivity, so the first request
+after a while may take a few seconds to respond (cold start).
 
 ## Stack
 
@@ -22,7 +32,13 @@ pipeline.
   a third-party auth provider, on purpose. See [ADR 0001](docs/adr/0001-jwt-manual-implementation.md).
 - **Testing:** Pytest, httpx.AsyncClient for integration tests
 - **CI/CD:** GitHub Actions
-- **Deploy:** Railway
+- **Deploy:** Render
+- **Database (production):** Neon
+- **Local dev:** Docker Compose + local Postgres
+
+Migrations against the production database are currently run manually,
+using Alembic against Neon's direct (non-pooled) connection string — Render's
+Pre-Deploy Command is a paid-tier feature, so this isn't automated yet.
 
 ## Features
 
