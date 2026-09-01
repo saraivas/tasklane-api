@@ -22,6 +22,15 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[TaskStatus] = None
 
+    @field_validator("title")
+    @classmethod
+    def title_must_not_be_blank(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if not value.strip():
+            raise ValueError("Title cannot be blank")
+        return value.strip()
+
 
 class TaskResponse(BaseModel):
     id: uuid.UUID
