@@ -1,3 +1,6 @@
+import uuid
+
+
 def register_and_login(client, email, password="senha123"):
     client.post("/auth/register", json={"email": email, "password": password})
     response = client.post("/auth/login", json={"email": email, "password": password})
@@ -43,6 +46,15 @@ def test_user_cannot_see_another_users_task(client):
 
     response_as_b = client.get(f"/tasks/{task_id}", headers=auth_headers(token_b))
     assert response_as_b.status_code == 404
+
+
+def test_get_nonexistent_task_returns_404(client):
+    token = register_and_login(client, "usuario_c@example.com")
+
+    nonexistent_task_id = uuid.uuid4()
+
+    response = client.get(f"/tasks/{nonexistent_task_id}", headers=auth_headers(token))
+    assert response.status_code == 404
 
 
 def test_user_cannot_delete_another_users_task(client):
