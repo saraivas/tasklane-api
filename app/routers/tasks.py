@@ -7,8 +7,8 @@ from sqlalchemy import func
 from app.db.session import get_db
 from app.deps import get_current_user
 from app.models.user import User
-from app.models.task import Task
-from typing import List
+from app.models.task import Task, TaskStatus
+from typing import List, Optional
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, PaginatedTaskResponse
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -36,11 +36,14 @@ def create_task(
 def list_tasks(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
+    status: Optional[TaskStatus] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     offset = (page -1) * limit
     query = db.query(Task).filter(Task.user_id == current_user.id)
+    if status is not None:
+        query = query.filter(Task.status == status)
     total = query.count()
 
     tasks = (

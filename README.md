@@ -76,17 +76,31 @@ pytest
 
 ## API overview
 
-| Method | Route            | Description                                       | Auth          |
-| ------ | ---------------- | ------------------------------------------------- | ------------- |
-| POST   | `/auth/register` | Create a user                                     | No            |
-| POST   | `/auth/login`    | Get access + refresh token                        | No            |
-| POST   | `/auth/refresh`  | Refresh access token                              | Refresh token |
-| GET    | `/tasks`         | List current user's tasks (paginated, filterable) | Yes           |
-| POST   | `/tasks`         | Create a task                                     | Yes           |
-| GET    | `/tasks/{id}`    | Get a task                                        | Yes           |
-| PATCH  | `/tasks/{id}`    | Update a task                                     | Yes           |
-| DELETE | `/tasks/{id}`    | Delete a task                                     | Yes           |
-| GET    | `/health`        | Health check                                      | No            |
+| Method | Route            | Description                                                          | Auth          |
+| ------ | ---------------- | --------------------------------------------------------------------- | ------------- |
+| POST   | `/auth/register` | Create a user                                                        | No            |
+| POST   | `/auth/login`    | Get access + refresh token                                           | No            |
+| POST   | `/auth/refresh`  | Refresh access token                                                 | Refresh token |
+| GET    | `/tasks`         | List current user's tasks (paginated object, filterable by `status`) | Yes           |
+| POST   | `/tasks`         | Create a task                                                        | Yes           |
+| GET    | `/tasks/{id}`    | Get a task                                                           | Yes           |
+| PATCH  | `/tasks/{id}`    | Update a task                                                        | Yes           |
+| DELETE | `/tasks/{id}`    | Delete a task                                                        | Yes           |
+| GET    | `/health`        | Health check                                                         | No            |
+
+`GET /tasks` returns a paginated object, not a raw array:
+
+```json
+{
+  "items": [ { "id": "...", "title": "Write report", "status": "todo", "..." } ],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
+```
+
+Supports `page`, `limit` (max 100), and an optional `status` filter, e.g.
+`GET /tasks?status=done&page=2&limit=10`.
 
 ## Architecture decisions
 

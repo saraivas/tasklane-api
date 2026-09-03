@@ -11,7 +11,7 @@ changes one thing — flips status from `todo` to `done`, tweaks the title,
 clears a description — not the whole record at once. Looking at
 [app/schemas/task.py](../../app/schemas/task.py), `TaskUpdate` makes every
 field `Optional` with no requirement to resend the rest, and
-[app/routers/tasks.py:63-88](../../app/routers/tasks.py#L63-L88) applies
+[app/routers/tasks.py:81-106](../../app/routers/tasks.py#L81-L106) applies
 only the fields actually present in the request body via
 `task_data.model_dump(exclude_unset=True)`.
 

@@ -151,3 +151,102 @@ def test_list_tasks_rejects_page_below_one(client):
     response = client.get("/tasks?page=0", headers=auth_headers(token))
 
     assert response.status_code == 422
+
+
+def test_update_task_changes_only_sent_fields(client):
+    token = register_and_login(client, "patch_feliz@example.com")
+
+    create_response = client.post(
+        "/tasks",
+        json={"title": "Titulo original", "description": "Descricao original"},
+        headers=auth_headers(token),
+    )
+    task_id = create_response.json()["id"]
+
+    update_response = client.patch(
+        f"/tasks/{task_id}",
+        json={"title": "Titulo atualizado", "status": "done"},
+        headers=auth_headers(token),
+    )
+
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data["title"] == "Titulo atualizado"
+    assert data["status"] == "done"
+    assert data["description"] == "Descricao original"
+
+
+def test_user_cannot_update_another_users_task(client):
+    token_a = register_and_login(client, "dono_patch@example.com")
+    token_b = register_and_login(client, "invasor_patch@example.com")
+
+    create_response = client.post(
+        "/tasks",
+        json={"title": "Tarefa protegida"},
+        headers=auth_headers(token_a),
+    )
+    task_id = create_response.json()["id"]
+
+    update_response = client.patch(
+        f"/tasks/{task_id}",
+        json={"title": "Tentativa de invasao"},
+        headers=auth_headers(token_b),
+    )
+    assert update_response.status_code == 404
+
+    check_response = client.get(f"/tasks/{task_id}", headers=auth_headers(token_a))
+    assert check_response.json()["title"] == "Tarefa protegida"
+
+
+def test_create_task_rejects_blank_title(client):
+    token = register_and_login(client, "titulo_vazio_create@example.com")
+
+    response = client.post(
+        "/tasks",
+        json={"title": "   "},
+        headers=auth_headers(token),
+    )
+    assert response.status_code == 422
+
+
+def test_update_task_rejects_blank_title(client):
+    token = register_and_login(client, "titulo_vazio_update@example.com")
+
+    create_response = client.post(
+        "/tasks",
+        json={"title": "Titulo valido"},
+        headers=auth_headers(token),
+    )
+    task_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/tasks/{task_id}",
+        json={"title": "   "},
+        headers=auth_headers(token),
+    )
+    assert response.status_code == 422
+
+
+def test_list_tasks_filters_by_status(client):
+    token = register_and_login(client, "filtro_status@example.com")
+
+    todo_response = client.post(
+        "/tasks", json={"title": "A fazer"}, headers=auth_headers(token)
+    )
+    done_response = client.post(
+        "/tasks", json={"title": "Feita"}, headers=auth_headers(token)
+    )
+    client.patch(
+        f"/tasks/{done_response.json()['id']}",
+        json={"status": "done"},
+        headers=auth_headers(token),
+    )
+
+    response = client.get("/tasks?status=done", headers=auth_headers(token))
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["id"] == done_response.json()["id"]
+    assert all(item["status"] == "done" for item in data["items"])
