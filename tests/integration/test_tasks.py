@@ -28,9 +28,9 @@ def test_create_and_list_task(client):
 
     list_response = client.get("/tasks", headers=auth_headers(token))
     assert list_response.status_code == 200
-    tasks = list_response.json()
-    assert len(tasks) == 1
-    assert tasks[0]["title"] == "Minha tarefa"
+    data = list_response.json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["title"] == "Minha tarefa"
 
 
 def test_user_cannot_see_another_users_task(client):
@@ -86,5 +86,68 @@ def test_task_list_only_shows_own_tasks(client):
     list_as_a = client.get("/tasks", headers=auth_headers(token_a)).json()
     list_as_b = client.get("/tasks", headers=auth_headers(token_b)).json()
 
-    assert len(list_as_a) == 1
-    assert len(list_as_b) == 2
+    assert len(list_as_a["items"]) == 1
+    assert len(list_as_b["items"]) == 2
+
+
+def test_list_tasks_returns_paginated_response(client):
+    token = register_and_login(client, "paginacao1@example.com")
+
+    for i in range(5):
+        client.post("/tasks", json={"title": f"Tarefa {i}"}, headers=auth_headers(token))
+
+    response = client.get("/tasks", headers=auth_headers(token))
+    data = response.json()
+
+    assert response.status_code == 200
+    assert "items" in data
+    assert "total" in data
+    assert data["total"] == 5
+    assert data["page"] == 1
+    assert data["limit"] == 20
+    assert len(data["items"]) == 5
+
+
+def test_list_tasks_respects_limit(client):
+    token = register_and_login(client, "paginacao2@example.com")
+
+    for i in range(5):
+        client.post("/tasks", json={"title": f"Tarefa {i}"}, headers=auth_headers(token))
+
+    response = client.get("/tasks?limit=2", headers=auth_headers(token))
+    data = response.json()
+
+    assert len(data["items"]) == 2
+    assert data["total"] == 5
+    assert data["limit"] == 2
+
+
+def test_list_tasks_second_page_returns_different_items(client):
+    token = register_and_login(client, "paginacao3@example.com")
+
+    for i in range(5):
+        client.post("/tasks", json={"title": f"Tarefa {i}"}, headers=auth_headers(token))
+
+    page1 = client.get("/tasks?page=1&limit=2", headers=auth_headers(token)).json()
+    page2 = client.get("/tasks?page=2&limit=2", headers=auth_headers(token)).json()
+
+    page1_ids = {item["id"] for item in page1["items"]}
+    page2_ids = {item["id"] for item in page2["items"]}
+
+    assert page1_ids.isdisjoint(page2_ids)
+
+
+def test_list_tasks_rejects_limit_above_max(client):
+    token = register_and_login(client, "paginacao4@example.com")
+
+    response = client.get("/tasks?limit=101", headers=auth_headers(token))
+
+    assert response.status_code == 422
+
+
+def test_list_tasks_rejects_page_below_one(client):
+    token = register_and_login(client, "paginacao5@example.com")
+
+    response = client.get("/tasks?page=0", headers=auth_headers(token))
+
+    assert response.status_code == 422

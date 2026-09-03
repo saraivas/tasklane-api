@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, field_validator
 from app.models.task import TaskStatus
 
@@ -41,3 +41,10 @@ class TaskResponse(BaseModel):
     updated_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedTaskResponse(BaseModel):
+    items: List[TaskResponse]
+    total: int
+    page: int
+    limit: int

@@ -1,14 +1,15 @@
 import uuid
 
 # app/routers/tasks.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db.session import get_db
 from app.deps import get_current_user
 from app.models.user import User
 from app.models.task import Task
 from typing import List
-from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
+from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, PaginatedTaskResponse
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -31,13 +32,30 @@ def create_task(
     return new_task
 
 
-@router.get("", response_model=List[TaskResponse])
+@router.get("", response_model=PaginatedTaskResponse)
 def list_tasks(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
-    return tasks
+    offset = (page -1) * limit
+    query = db.query(Task).filter(Task.user_id == current_user.id)
+    total = query.count()
+
+    tasks = (
+        query.order_by(Task.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return PaginatedTaskResponse(
+        items=tasks,
+        total=total,
+        page=page,
+        limit=limit,
+    )
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
