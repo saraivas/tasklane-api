@@ -4,6 +4,14 @@
 
 Accepted
 
+> **Update:** this ADR says the tests use a dedicated test database, but
+> `tests/conftest.py` used to read `DATABASE_URL`, the same variable as the
+> application. With a local `.env` (as the README tells you to create), `pytest`
+> ran against the development database and dropped its `users` and `tasks`
+> tables. The tests now read their own `TEST_DATABASE_URL` and refuse to run
+> unless the database name ends with `_test`. The text below is kept as it was
+> written.
+
 ## Context
 
 Looking at [tests/conftest.py](../../tests/conftest.py), the `db_session`

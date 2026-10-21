@@ -62,17 +62,22 @@ one concept at a time, documented in public.
 git clone https://github.com/saraivas/tasklane-api.git
 cd tasklane-api
 cp .env.example .env
-docker-compose up -d          # starts Postgres
+docker compose up -d db       # starts only Postgres (the api service uses port 8000)
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Run tests:
+Run tests (they use their own database, `tasklane_test`, and drop all its
+tables on every test, so it is separate from the development one):
 
 ```bash
+docker compose exec db createdb -U tasklane tasklane_test   # once
 pytest
 ```
+
+`pytest` reads `TEST_DATABASE_URL` and refuses to run if the database name
+does not end with `_test`.
 
 ## API overview
 
