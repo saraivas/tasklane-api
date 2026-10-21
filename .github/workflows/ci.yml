@@ -40,6 +40,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://tasklane:tasklane@localhost:5432/tasklane_test
+          TEST_DATABASE_URL: postgresql://tasklane:tasklane@localhost:5432/tasklane_test
           SECRET_KEY: ci-test-secret-key
           ALGORITHM: HS256
           ACCESS_TOKEN_EXPIRE_MINUTES: 30
