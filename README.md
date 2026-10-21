@@ -80,7 +80,7 @@ pytest
 | ------ | ---------------- | --------------------------------------------------------------------- | ------------- |
 | POST   | `/auth/register` | Create a user                                                        | No            |
 | POST   | `/auth/login`    | Get access + refresh token                                           | No            |
-| POST   | `/auth/refresh`  | Refresh access token                                                 | Refresh token |
+| POST   | `/auth/refresh`  | New access + refresh token (refresh token sent in the JSON body)     | Refresh token |
 | GET    | `/tasks`         | List current user's tasks (paginated object, filterable by `status`) | Yes           |
 | POST   | `/tasks`         | Create a task                                                        | Yes           |
 | GET    | `/tasks/{id}`    | Get a task                                                           | Yes           |
@@ -101,6 +101,11 @@ pytest
 
 Supports `page`, `limit` (max 100), and an optional `status` filter, e.g.
 `GET /tasks?status=done&page=2&limit=10`.
+
+Refreshing a session sends the refresh token in the request body, never in the
+URL. Each refresh returns a new pair of tokens (the refresh token's 7-day window
+slides), and a session ends 30 days after the original login regardless. See
+[ADR 0010](docs/adr/0010-refresh-token-rotation-and-session-limit.md).
 
 ## Architecture decisions
 

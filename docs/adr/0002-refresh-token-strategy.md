@@ -2,7 +2,14 @@
 
 ## Status
 
-Accepted
+Accepted. Partially superseded by [ADR 0010](0010-refresh-token-rotation-and-session-limit.md).
+
+> **Update:** when this ADR was written, the code did not issue a new refresh
+> token on `/auth/refresh`, so the sliding expiration described below was not
+> actually implemented. ADR 0010 implements it and also adds the absolute
+> session limit that this ADR listed as a future improvement. Reuse detection
+> and revocation are still not implemented. The text below is kept as it was
+> written.
 
 ## Context
 

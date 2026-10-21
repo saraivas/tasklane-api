@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User
+from app.schemas.auth import RefreshRequest, TokenResponse
 from app.schemas.user import UserCreate, UserResponse
 from app.core.security import (
     hash_password,
@@ -9,9 +12,17 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    session_has_expired,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _no_store(response: Response) -> None:
+    # Responses that carry tokens must never be stored by browsers or proxies
+    # (RFC 6749, section 5.1).
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -34,8 +45,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-@router.post("/login")
-def login(user_data: UserCreate, db: Session = Depends(get_db)):
+@router.post("/login", response_model=TokenResponse)
+def login(user_data: UserCreate, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_data.email).first()
 
     if not user or not verify_password(user_data.password, user.hashed_password):
@@ -44,25 +55,41 @@ def login(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Invalid email or password",
         )
 
-    return {
-        "access_token": create_access_token(str(user.id)),
-        "refresh_token": create_refresh_token(str(user.id)),
-        "token_type": "bearer",
-    }
+    _no_store(response)
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        refresh_token=create_refresh_token(str(user.id)),
+    )
 
 
-@router.post("/refresh")
-def refresh(refresh_token: str):
-    payload = decode_token(refresh_token)
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(body: RefreshRequest, response: Response, db: Session = Depends(get_db)):
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired refresh token",
+    )
 
+    payload = decode_token(body.refresh_token)
     if payload is None or payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
-        )
+        raise invalid
 
-    user_id = payload.get("sub")
-    return {
-        "access_token": create_access_token(user_id),
-        "token_type": "bearer",
-    }
+    # Every failure below returns the same error, so a caller cannot tell
+    # a deleted user from an expired session.
+    auth_time = payload.get("auth_time")
+    if not isinstance(auth_time, int) or session_has_expired(auth_time):
+        raise invalid
+
+    try:
+        user_id = uuid.UUID(payload.get("sub", ""))
+    except (ValueError, TypeError, AttributeError):
+        raise invalid
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise invalid
+
+    _no_store(response)
+    return TokenResponse(
+        access_token=create_access_token(str(user.id)),
+        refresh_token=create_refresh_token(str(user.id), auth_time=auth_time),
+    )
